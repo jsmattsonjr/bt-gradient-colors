@@ -40,40 +40,24 @@
   // Extract route elevation/distance data from the response
   function extractRouteData(data) {
     try {
-      // The data structure is SvelteKit format
-      if (!data.nodes || !Array.isArray(data.nodes)) {
-        console.log('[Gradient Colors] No nodes array found');
-        return null;
-      }
+      const dataArray = data.nodes?.[1]?.data;
+      if (!dataArray) return null;
 
-      // Look for the route data node
-      for (const node of data.nodes) {
-        if (node.type === 'data' && node.data) {
-          const dataArray = node.data;
+      // Follow route reference chain
+      const routeIdx = dataArray[0]?.route;
+      if (!routeIdx) return null;
 
-          // Find the simple_route field (JSON string like [[lat, lng, elev, dist], ...])
-          for (const item of dataArray) {
-            if (typeof item === 'string' && item.startsWith('[[') && item.includes('.')) {
-              try {
-                const routePoints = JSON.parse(item);
-                if (Array.isArray(routePoints) && routePoints.length > 0 &&
-                  Array.isArray(routePoints[0]) && routePoints[0].length >= 4) {
-                  // Only extract elevation and distance (indices 2 and 3)
-                  return routePoints.map(point => ({
-                    elevation: point[2],
-                    distance: point[3]
-                  }));
-                }
-              } catch (e) {
-                // Not valid JSON, continue
-              }
-            }
-          }
-        }
-      }
+      const route = dataArray[routeIdx];
 
-      console.log('[Gradient Colors] Could not find simple_route in data');
-      return null;
+      // Get distance in cm, convert to meters
+      const totalDistance = dataArray[route.distance] / 100;
+
+      // Parse simple_route for elevation range
+      const routePoints = JSON.parse(dataArray[route.simple_route]);
+      const minElev = Math.min(...routePoints.map(p => p[2]));
+      const maxElev = Math.max(...routePoints.map(p => p[2]));
+
+      return { totalDistance, minElev, maxElev };
     } catch (e) {
       console.error('[Gradient Colors] Error extracting route data:', e);
       return null;
@@ -106,8 +90,8 @@
     const routeData = await fetchRouteData(routeId);
     initializeInProgress = false;
 
-    if (routeData && routeData.length > 0) {
-      console.log('[Gradient Colors] Got route data with', routeData.length, 'points');
+    if (routeData) {
+      console.log('[Gradient Colors] Got route data:', routeData);
       window._biketerraRouteId = routeId;
       window._biketerraRouteData = routeData;
       processElevationSVG();
@@ -173,7 +157,7 @@
   // Process the elevation SVG and recolor it
   function processElevationSVG() {
     const routeData = window._biketerraRouteData;
-    if (!routeData || routeData.length < 2) {
+    if (!routeData) {
       console.log('[Gradient Colors] No route data available yet');
       return;
     }
@@ -211,10 +195,8 @@
     }
 
     // Get scaling factors from route data
-    const totalDistance = routeData[routeData.length - 1].distance; // meters
-    const minElev = Math.min(...routeData.map(p => p.elevation));
-    const maxElev = Math.max(...routeData.map(p => p.elevation));
-    const elevRange = maxElev - minElev || 1; // meters
+    const { totalDistance, minElev, maxElev } = routeData;
+    const elevRange = maxElev - minElev || 1;
 
     // Remove any existing polygons we created
     svg.querySelectorAll('polygon').forEach(p => p.remove());
