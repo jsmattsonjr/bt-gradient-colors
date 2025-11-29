@@ -102,39 +102,13 @@
   }
 
   // Gradient color scale
+  const colorStops = ['#713071', '#0c4ae0', '#28eaed', '#24ca26', '#f1f060', '#d90916', '#430102'];
+
   function gradientToColor(gradient) {
-    // Clamp gradient to range
-    const g = Math.max(-27.5, Math.min(27.5, gradient));
-
-    // Color stops
-    const green = '#24ca26';
-    const yellow = '#f1f060';
-    const red = '#d90916';
-    const maroon = '#430102';
-    const cyan = '#28eaed';
-    const blue = '#0c4ae0';
-    const purple = '#307171';
-
-    if (g >= 0) {
-      // Positive gradients (climbing)
-      if (g <= 7.5) {
-        return lerpColor(green, yellow, g / 7.5);
-      } else if (g <= 15) {
-        return lerpColor(yellow, red, (g - 7.5) / 7.5);
-      } else {
-        return lerpColor(red, maroon, (g - 15) / 12.5);
-      }
-    } else {
-      // Negative gradients (descending)
-      const absG = -g;
-      if (absG <= 7.5) {
-        return lerpColor(green, cyan, absG / 7.5);
-      } else if (absG <= 15) {
-        return lerpColor(cyan, blue, (absG - 7.5) / 7.5);
-      } else {
-        return lerpColor(blue, purple, (absG - 15) / 12.5);
-      }
-    }
+    const normalized = Math.max(-3, Math.min(3, gradient / 8));
+    const band = Math.max(-3, Math.min(2, Math.floor(normalized)));
+    const t = normalized - band;
+    return lerpColor(colorStops[band + 3], colorStops[band + 4], t);
   }
 
   // Linear interpolation between two hex colors
