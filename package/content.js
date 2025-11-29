@@ -222,7 +222,9 @@
 
       // Create a filled polygon for this segment
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      const polygonPoints = `${x},1 ${x},${yStart} ${xEnd},${yEnd} ${xEnd},1`;
+      const overlap = 0.001;
+      const xEndOverlap = Math.min(xEnd + overlap, 1);
+      const polygonPoints = `${x},1 ${x},${yStart} ${xEndOverlap},${yEnd} ${xEndOverlap},1`;
       polygon.setAttribute('points', polygonPoints);
       polygon.setAttribute('fill', color);
       polygon.setAttribute('stroke', 'none');
