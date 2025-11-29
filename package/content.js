@@ -158,7 +158,11 @@
 
     // Only process the last (most recent/active) stroke polyline
     const strokePolyline = strokePolylines[strokePolylines.length - 1];
-    console.log('[Gradient Colors] Processing active polyline (last of', strokePolylines.length, ')');
+    console.log(
+      '[Gradient Colors] Processing active polyline (last of',
+      strokePolylines.length,
+      ')'
+    );
 
     const pointsStr = strokePolyline.getAttribute('points');
     const points = parsePolylinePoints(pointsStr);
@@ -212,7 +216,7 @@
       // Convert normalized slope to actual gradient percentage
       // dY * elevRange = elevation change in meters
       // dX * totalDistance = distance change in meters
-      const gradient = (dY * elevRange) / (dX * totalDistance) * 100;
+      const gradient = ((dY * elevRange) / (dX * totalDistance)) * 100;
 
       const color = gradientToColor(gradient);
 
@@ -348,7 +352,7 @@
     // Watch for child elements being added/removed within the SVG
     svgContentObserver.observe(svg, {
       childList: true,
-      subtree: true
+      subtree: true,
     });
   }
 
@@ -363,8 +367,8 @@
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
     if (e.key === 'g' || e.key === 'G') {
-      const elevPanel = document.querySelector('.elev-graph') ||
-        document.querySelector('.panel-elevation-profile');
+      const elevPanel =
+        document.querySelector('.elev-graph') || document.querySelector('.panel-elevation-profile');
       if (elevPanel) {
         elevPanel.click();
       }
@@ -373,7 +377,9 @@
 
   function setupGradientCircleObserver() {
     // Target the GRADE circle specifically, not the DRAFT circle
-    const circle = document.querySelector('.panel-grade .stat-circle-fill, .stat-grade .stat-circle-fill');
+    const circle = document.querySelector(
+      '.panel-grade .stat-circle-fill, .stat-grade .stat-circle-fill'
+    );
     if (!circle) return;
 
     // Don't set up again if we're already observing this circle
@@ -388,7 +394,7 @@
     observedCircle = circle;
 
     // Create observer to watch for style and content changes
-    gradientCircleObserver = new MutationObserver(function (mutations) {
+    gradientCircleObserver = new MutationObserver(function (_mutations) {
       // Skip if we're the ones making the change
       if (isUpdatingCircle) return;
 
@@ -398,7 +404,7 @@
     // Watch style attribute changes on the circle fill
     gradientCircleObserver.observe(circle, {
       attributes: true,
-      attributeFilter: ['style']
+      attributeFilter: ['style'],
     });
 
     // Also watch for value text changes
@@ -407,18 +413,22 @@
       gradientCircleObserver.observe(valueElem, {
         characterData: true,
         childList: true,
-        subtree: true
+        subtree: true,
       });
     }
 
     // Initial update (and a delayed one to catch race conditions)
     updateGradientCircleColor(circle);
-    setTimeout(function () { updateGradientCircleColor(circle); }, 500);
+    setTimeout(function () {
+      updateGradientCircleColor(circle);
+    }, 500);
   }
 
   function updateGradientCircleColor(circle) {
     if (!circle) {
-      circle = document.querySelector('.panel-grade .stat-circle-fill, .stat-grade .stat-circle-fill');
+      circle = document.querySelector(
+        '.panel-grade .stat-circle-fill, .stat-grade .stat-circle-fill'
+      );
     }
     if (!circle) return;
 
@@ -440,13 +450,16 @@
       circle.style.setProperty('background-color', color, 'important');
 
       // Add dark outline to the text for readability on bright backgrounds
-      valueElem.style.setProperty('text-shadow',
+      valueElem.style.setProperty(
+        'text-shadow',
         '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
-        'important');
+        'important'
+      );
 
       // Clear guard after a brief delay (allow mutation to fire and be ignored)
-      setTimeout(function () { isUpdatingCircle = false; }, 10);
+      setTimeout(function () {
+        isUpdatingCircle = false;
+      }, 10);
     }
   }
-
 })();

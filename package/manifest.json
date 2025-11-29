@@ -4,18 +4,11 @@
   "version": "1.0",
   "description": "Replaces Biketerra elevation graph colors with Veloviewer-inspired gradient coloring",
   "permissions": [],
-  "host_permissions": [
-    "https://biketerra.com/*"
-  ],
+  "host_permissions": ["https://biketerra.com/*"],
   "content_scripts": [
     {
-      "matches": [
-        "https://biketerra.com/spectate/*",
-        "https://biketerra.com/ride*"
-      ],
-      "js": [
-        "content.js"
-      ],
+      "matches": ["https://biketerra.com/spectate/*", "https://biketerra.com/ride*"],
+      "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],
