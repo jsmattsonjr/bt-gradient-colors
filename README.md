@@ -21,14 +21,14 @@ A Chrome extension that enhances [Biketerra](https://biketerra.com) elevation pr
 ### Gradient Color System
 
 **Climbing (positive grades):**
-- **Green → Yellow**: 0-8% grade
-- **Yellow → Red**: 8-16% grade
-- **Red → Maroon**: 16-24% grade
+- **Green → Yellow**: 0-7% grade
+- **Yellow → Red**: 7-14% grade
+- **Red → Maroon**: 14-21% grade
 
 **Descending (negative grades):**
-- **Green → Cyan**: 0-8% grade
-- **Cyan → Blue**: 8-16% grade
-- **Blue → Purple**: 16-24% grade
+- **Green → Cyan**: 0-7% grade
+- **Cyan → Blue**: 7-14% grade
+- **Blue → Purple**: 14-21% grade
 
 ## Installation
 

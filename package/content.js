@@ -105,7 +105,7 @@
   const colorStops = ['#713071', '#0c4ae0', '#28eaed', '#24ca26', '#f1f060', '#d90916', '#430102'];
 
   function gradientToColor(gradient) {
-    const normalized = Math.max(-3, Math.min(3, gradient / 8));
+    const normalized = Math.max(-3, Math.min(3, gradient / 7));
     const band = Math.max(-3, Math.min(2, Math.floor(normalized)));
     const t = normalized - band;
     return lerpColor(colorStops[band + 3], colorStops[band + 4], t);
