@@ -176,6 +176,13 @@
     const { totalDistance, minElev, maxElev } = routeData;
     const elevRange = maxElev - minElev || 1;
 
+    // Calculate the actual Y span of the polyline (it doesn't span 0-1)
+    const yMin = Math.min(...points.map(p => p.y));
+    const yMax = Math.max(...points.map(p => p.y));
+    const ySpan = yMax - yMin || 1;
+
+    console.log('[Gradient Colors] Y span:', ySpan, 'elevRange:', elevRange);
+
     // Remove any existing polygons we created
     svg.querySelectorAll('polygon').forEach(p => p.remove());
 
@@ -214,9 +221,10 @@
       const dX = xEnd - x;
 
       // Convert normalized slope to actual gradient percentage
-      // dY * elevRange = elevation change in meters
+      // dY/ySpan = proportion of elevation range
+      // (dY/ySpan) * elevRange = elevation change in meters
       // dX * totalDistance = distance change in meters
-      const gradient = ((dY * elevRange) / (dX * totalDistance)) * 100;
+      const gradient = ((dY * elevRange) / (ySpan * dX * totalDistance)) * 100;
 
       const color = gradientToColor(gradient);
 
