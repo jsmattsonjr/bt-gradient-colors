@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Gradient Colors Options</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        padding: 16px;
+        min-width: 320px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+      }
+      h2 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .color-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        gap: 6px;
+      }
+      .color-row label {
+        font-size: 13px;
+        min-width: 45px;
+      }
+      .color-row input[type='color'] {
+        width: 50px;
+        height: 30px;
+        border: 1px solid #444;
+        border-radius: 4px;
+        cursor: pointer;
+        background: none;
+        padding: 2px;
+      }
+      .distance-row {
+        display: flex;
+        align-items: center;
+        margin: 20px 0;
+        gap: 10px;
+      }
+      .distance-row label {
+        font-size: 13px;
+      }
+      .distance-row input[type='number'] {
+        width: 60px;
+        padding: 6px 8px;
+        border: 1px solid #444;
+        border-radius: 4px;
+        background: #2a2a2a;
+        color: #e0e0e0;
+        font-size: 13px;
+      }
+      .distance-row span {
+        font-size: 12px;
+        color: #888;
+      }
+      .buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      button.primary {
+        background: #2563eb;
+        color: white;
+      }
+      button.primary:hover {
+        background: #1d4ed8;
+      }
+      button.secondary {
+        background: #404040;
+        color: #e0e0e0;
+      }
+      button.secondary:hover {
+        background: #505050;
+      }
+      button.disabled {
+        background: #333;
+        color: #666;
+        cursor: default;
+      }
+      button.disabled:hover {
+        background: #333;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 12px;
+        color: #22c55e;
+        min-height: 16px;
+      }
+      .preview {
+        display: flex;
+        height: 20px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+      .preview-segment {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Color Stops</h2>
+    <div class="preview" id="preview"></div>
+
+    <div class="color-row">
+      <label>-21%</label>
+      <input type="color" id="color0" value="#713071" />
+    </div>
+    <div class="color-row">
+      <label>-14%</label>
+      <input type="color" id="color1" value="#0c4ae0" />
+    </div>
+    <div class="color-row">
+      <label>-7%</label>
+      <input type="color" id="color2" value="#28eaed" />
+    </div>
+    <div class="color-row">
+      <label>0%</label>
+      <input type="color" id="color3" value="#24ca26" />
+    </div>
+    <div class="color-row">
+      <label>+7%</label>
+      <input type="color" id="color4" value="#f1f060" />
+    </div>
+    <div class="color-row">
+      <label>+14%</label>
+      <input type="color" id="color5" value="#d90916" />
+    </div>
+    <div class="color-row">
+      <label>+21%</label>
+      <input type="color" id="color6" value="#430102" />
+    </div>
+
+    <div class="distance-row">
+      <label>Gradient per color band:</label>
+      <input type="number" id="distance" value="7" min="1" max="20" step="0.5" />
+      <span>%</span>
+    </div>
+
+    <div class="buttons">
+      <button class="primary" id="save">Save</button>
+      <button class="secondary" id="reset">Reset to Defaults</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

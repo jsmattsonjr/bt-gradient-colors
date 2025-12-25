@@ -101,14 +101,53 @@
     return false;
   }
 
-  // Gradient color scale
-  const colorStops = ['#713071', '#0c4ae0', '#28eaed', '#24ca26', '#f1f060', '#d90916', '#430102'];
+  // Default settings
+  const DEFAULT_SETTINGS = {
+    colorStops: ['#713071', '#0c4ae0', '#28eaed', '#24ca26', '#f1f060', '#d90916', '#430102'],
+    distance: 7,
+  };
+
+  // Current settings (loaded from storage)
+  let settings = { ...DEFAULT_SETTINGS };
+
+  // Load settings from storage
+  function loadSettings() {
+    return new Promise(resolve => {
+      chrome.storage.sync.get(DEFAULT_SETTINGS, function (stored) {
+        settings = stored;
+        console.log('[Gradient Colors] Loaded settings:', settings);
+        resolve(settings);
+      });
+    });
+  }
+
+  // Listen for settings changes
+  chrome.storage.onChanged.addListener(function (changes, area) {
+    if (area === 'sync') {
+      if (changes.colorStops) {
+        settings.colorStops = changes.colorStops.newValue;
+      }
+      if (changes.distance) {
+        settings.distance = changes.distance.newValue;
+      }
+      console.log('[Gradient Colors] Settings updated:', settings);
+      // Reprocess SVG with new colors
+      const svg = document.querySelector('svg.pathSVG');
+      if (svg) {
+        svg.dataset.gradientColored = 'false';
+        svg.querySelectorAll('polygon').forEach(p => p.remove());
+        processElevationSVG();
+      }
+      // Update grade circle
+      updateGradientCircleColor();
+    }
+  });
 
   function gradientToColor(gradient) {
-    const normalized = Math.max(-3, Math.min(3, gradient / 7));
+    const normalized = Math.max(-3, Math.min(3, gradient / settings.distance));
     const band = Math.max(-3, Math.min(2, Math.floor(normalized)));
     const t = normalized - band;
-    return lerpColor(colorStops[band + 3], colorStops[band + 4], t);
+    return lerpColor(settings.colorStops[band + 3], settings.colorStops[band + 4], t);
   }
 
   // Linear interpolation between two hex colors
@@ -366,10 +405,12 @@
     });
   }
 
-  // Initialize on load
-  initialize();
-  setupPolylineObserver();
-  setupGradientCircleObserver();
+  // Initialize on load (after loading settings)
+  loadSettings().then(function () {
+    initialize();
+    setupPolylineObserver();
+    setupGradientCircleObserver();
+  });
 
   // Keyboard shortcut: 'g' toggles global/local elevation graph
   document.addEventListener('keydown', function (e) {

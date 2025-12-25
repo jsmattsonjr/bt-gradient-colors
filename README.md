@@ -14,9 +14,10 @@ A Chrome extension that enhances [Biketerra](https://biketerra.com) elevation pr
 
 - **Dynamic Elevation Graphs**: Automatically recolors elevation profile SVGs with gradient-based colors
 - **Grade Indicators**: Updates the GRADE stat circle with matching gradient colors
+- **Customizable Colors**: Configure your own color stops and grade ranges via the options page
 - **Keyboard Shortcut**: Press `G` to toggle the elevation panel between global and local zoom
 - **Real-time Updates**: Monitors DOM changes to handle route reversals and dynamic content
-- **Veloviewer Color Scheme**: Uses a familiar gradient color system
+- **Settings Sync**: Your custom colors sync across Chrome browsers when signed in
 
 ### Gradient Color System
 
@@ -29,6 +30,21 @@ A Chrome extension that enhances [Biketerra](https://biketerra.com) elevation pr
 - **Green → Cyan**: 0-7% grade
 - **Cyan → Blue**: 7-14% grade
 - **Blue → Purple**: 14-21% grade
+
+### Customization
+
+You can customize the gradient colors and grade ranges through the extension's options page:
+
+1. Right-click the extension icon and select **Options**, or
+2. Go to `chrome://extensions/`, find the extension, click **Details**, then **Extension options**
+
+The options page allows you to:
+- **Customize all 7 color stops**
+- **Adjust the gradient range** per color band (default is 7% per band)
+- **Preview your changes** in real-time before saving
+- **Reset to defaults** if needed
+
+Settings are saved to Chrome's sync storage and will apply immediately to any open Biketerra pages.
 
 ## Installation
 
@@ -88,6 +104,8 @@ npm install
 **Core Files:**
 - `package/manifest.json` - Chrome extension manifest (v3)
 - `package/content.js` - Main content script with all functionality
+- `package/options.html` - Options page UI for customizing colors
+- `package/options.js` - Options page logic for saving/loading settings
 - `package/icons/` - Extension icons (16px, 48px, 128px)
 
 **How It Works:**
