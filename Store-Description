@@ -1,0 +1,45 @@
+Biketerra Gradient Colors enhances your Biketerra experience by replacing the default elevation graph colors with a comprehensive gradient color scheme inspired by Veloviewer. See climbing and descending difficulty at a glance with a wider color spectrum on elevation profiles.
+
+  KEY FEATURES
+
+  • Dynamic Elevation Graphs - Automatically recolors elevation profile SVGs with gradient-based colors
+  • Grade Indicators - Updates the GRADE stat circle with matching gradient colors
+  • Keyboard Shortcut - Press 'G' to toggle the elevation panel between global and local zoom
+  • Customizable Colors - Options page with color pickers for all 7 gradient color stops
+  • Adjustable Grade Range - Configure the grade percentage per color band (default 7%)
+  • Live Preview - Real-time gradient preview as you adjust settings
+  • Cross-Browser Sync - Settings sync across all your Chrome browsers
+
+  GRADIENT COLOR SYSTEM
+
+  Climbing (positive grades):
+  • Green → Yellow: 0-7% grade
+  • Yellow → Red: 7-14% grade
+  • Red → Maroon: 14-21% grade
+
+  Descending (negative grades):
+  • Green → Cyan: 0-7% grade
+  • Cyan → Blue: 7-14% grade
+  • Blue → Purple: 14-21% grade
+
+  HOW TO USE
+
+  1. Ride or spectate on Biketerra.com
+  2. The elevation profile will automatically be recolored with gradient colors
+  3. The GRADE indicator circle will display the appropriate gradient color
+  4. Press 'G' to toggle elevation zoom modes
+  5. Right-click the extension icon and select "Options" to customize colors and grade ranges
+
+This extension works automatically when riding or spectating on Biketerra. Optionally customize the gradient colors and grade ranges via the extension options page.
+
+Source code is available at <https://github.com/jsmattsonjr/bt-gradient-colors>.
+
+Please report any issues via <https://github.com/jsmattsonjr/bt-gradient-colors/issues>.
+
+Not affiliated with Biketerra or VeloViewer.
+
+Change Log
+
+1.1 — Fixed thin, dark vertical lines; reduced range from [-24%, 24%] to [-21%, 21%].
+1.2 — Fixed incorrect colors for short routes.
+2.0 — Added options page with customizable gradient colors, adjustable grade ranges, live preview, and cross-browser sync.
