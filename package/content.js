@@ -241,23 +241,21 @@
       }
     });
 
-    // Create gradient-colored segments
-    const segmentWidth = 0.005;
+    // Create gradient-colored segments using actual polyline points
+    // Filter out y=1 points which are segment boundaries, not elevation data
+    const elevationPoints = points.filter(p => p.y < 1);
 
-    for (let x = 0; x < 1; x += segmentWidth) {
-      const xEnd = Math.min(x + segmentWidth, 1);
-
-      // Get elevation values at start and end of segment from polyline
-      const yStart = getYAtX(points, x);
-      const yEnd = getYAtX(points, xEnd);
-
-      if (yStart === null || yEnd === null) continue;
+    for (let i = 0; i < elevationPoints.length - 1; i++) {
+      const p1 = elevationPoints[i];
+      const p2 = elevationPoints[i + 1];
 
       // Calculate gradient directly from polyline slope
       // SVG Y is inverted: 0 = top (high elev), 1 = bottom (low elev)
       // So negative dY (going up visually) = climbing = positive gradient
-      const dY = yStart - yEnd; // Positive when climbing (Y decreasing)
-      const dX = xEnd - x;
+      const dY = p1.y - p2.y; // Positive when climbing (Y decreasing)
+      const dX = p2.x - p1.x;
+
+      if (dX <= 0) continue; // Skip invalid segments
 
       // Convert normalized slope to actual gradient percentage
       // dY/ySpan = proportion of elevation range
@@ -269,9 +267,10 @@
 
       // Create a filled polygon for this segment
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      // Add small overlap to prevent dark lines from floating point imprecision
       const overlap = 0.001;
-      const xEndOverlap = Math.min(xEnd + overlap, 1);
-      const polygonPoints = `${x},1 ${x},${yStart} ${xEndOverlap},${yEnd} ${xEndOverlap},1`;
+      const x2Overlap = Math.min(p2.x + overlap, 1);
+      const polygonPoints = `${p1.x},1 ${p1.x},${p1.y} ${x2Overlap},${p2.y} ${x2Overlap},1`;
       polygon.setAttribute('points', polygonPoints);
       polygon.setAttribute('fill', color);
       polygon.setAttribute('stroke', 'none');
