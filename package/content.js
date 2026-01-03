@@ -219,6 +219,105 @@
     return ((e2 - e1) / deltaD) * 100;
   }
 
+  // Get SVG Y value at a given X position using linear interpolation
+  function getSvgYAtX(svgPoints, targetX) {
+    if (svgPoints.length === 0) return null;
+    if (targetX <= svgPoints[0].x) return svgPoints[0].y;
+    if (targetX >= svgPoints[svgPoints.length - 1].x) {
+      return svgPoints[svgPoints.length - 1].y;
+    }
+
+    for (let i = 1; i < svgPoints.length; i++) {
+      if (svgPoints[i].x >= targetX) {
+        const p1 = svgPoints[i - 1];
+        const p2 = svgPoints[i];
+        const t = (targetX - p1.x) / (p2.x - p1.x);
+        return p1.y + t * (p2.y - p1.y);
+      }
+    }
+    return svgPoints[svgPoints.length - 1].y;
+  }
+
+  // Compute sum of squared errors between two arrays
+  function sumSquaredError(arr1, arr2) {
+    let sum = 0;
+    for (let i = 0; i < arr1.length; i++) {
+      const diff = arr1[i] - arr2[i];
+      sum += diff * diff;
+    }
+    return sum;
+  }
+
+  // Normalize array to 0-1 range for comparison
+  function normalizeArray(arr) {
+    const min = Math.min(...arr);
+    const max = Math.max(...arr);
+    const range = max - min || 1;
+    return arr.map(v => (v - min) / range);
+  }
+
+  // Detect whether SVG matches forward or reversed route
+  // Uses adaptive sampling - adds more points if uncertain
+  function detectRouteDirection(svgPoints, routePoints, totalDistance) {
+    // Start with sample points at 10%, 50%, 90%
+    let sampleXs = [0.1, 0.5, 0.9];
+    const minConfidenceRatio = 2.0; // Forward error should be 2x smaller (or vice versa)
+    const maxSamples = 17; // Max sample points before giving up
+
+    while (sampleXs.length <= maxSamples) {
+      // Get SVG Y values at sample points (negate because lower Y = higher elevation)
+      const svgElevs = sampleXs.map(x => -getSvgYAtX(svgPoints, x));
+
+      // Get forward route elevations at same normalized positions
+      const fwdElevs = sampleXs.map(x =>
+        interpolateElevation(routePoints, x * totalDistance)
+      );
+
+      // Get reverse route elevations (x=0 maps to end of route)
+      const revElevs = sampleXs.map(x =>
+        interpolateElevation(routePoints, (1 - x) * totalDistance)
+      );
+
+      // Normalize all arrays for comparison (removes scale differences)
+      const svgNorm = normalizeArray(svgElevs);
+      const fwdNorm = normalizeArray(fwdElevs);
+      const revNorm = normalizeArray(revElevs);
+
+      // Compute errors
+      const fwdError = sumSquaredError(svgNorm, fwdNorm);
+      const revError = sumSquaredError(svgNorm, revNorm);
+
+      // Check confidence
+      const ratio = Math.max(fwdError, revError) / (Math.min(fwdError, revError) || 0.0001);
+
+      if (ratio >= minConfidenceRatio || sampleXs.length >= maxSamples) {
+        const direction = fwdError <= revError ? 'forward' : 'reverse';
+        console.log(
+          '[Gradient Colors] Direction detection:',
+          direction,
+          '(fwdErr:', fwdError.toFixed(4),
+          'revErr:', revError.toFixed(4),
+          'ratio:', ratio.toFixed(2),
+          'samples:', sampleXs.length + ')'
+        );
+        return direction;
+      }
+
+      // Not confident enough - bisect ranges and add more sample points
+      const newSampleXs = [];
+      for (let i = 0; i < sampleXs.length - 1; i++) {
+        newSampleXs.push(sampleXs[i]);
+        newSampleXs.push((sampleXs[i] + sampleXs[i + 1]) / 2);
+      }
+      newSampleXs.push(sampleXs[sampleXs.length - 1]);
+      sampleXs = newSampleXs;
+    }
+
+    // Default to forward if still uncertain
+    console.log('[Gradient Colors] Direction uncertain, defaulting to forward');
+    return 'forward';
+  }
+
   // Linear interpolation between two hex colors
   function lerpColor(color1, color2, t) {
     const r1 = parseInt(color1.slice(1, 3), 16);
@@ -315,8 +414,12 @@
     const { routePoints } = routeData;
     const useRouteData = routePoints && routePoints.length > 1;
 
+    // Detect route direction (forward or reverse)
+    let isReversed = false;
     if (useRouteData) {
-      console.log('[Gradient Colors] Using route data for accurate gradients');
+      const direction = detectRouteDirection(elevationPoints, routePoints, totalDistance);
+      isReversed = direction === 'reverse';
+      console.log('[Gradient Colors] Using route data for accurate gradients (' + direction + ')');
     } else {
       console.log('[Gradient Colors] Falling back to SVG-based gradient estimation');
     }
@@ -331,8 +434,13 @@
         // Use route data for accurate gradient calculation
         // SVG x is normalized (0-1), convert to distance
         const centerX = (p1.x + p2.x) / 2;
-        const distance = centerX * totalDistance;
+        // If reversed, x=0 is end of route, x=1 is start
+        const distance = isReversed
+          ? (1 - centerX) * totalDistance
+          : centerX * totalDistance;
         gradient = computeGradientAtDistance(routePoints, distance, totalDistance);
+        // Negate gradient when reversed (going backwards on the route)
+        if (isReversed) gradient = -gradient;
       } else {
         // Fallback: estimate gradient from SVG coordinates (has quantization noise)
         const yQuantum = 0.001;
