@@ -37,6 +37,11 @@
     }
   }
 
+  // Dereference a pointer index in the Biketerra data array
+  function deref(dataArray, index) {
+    return dataArray[index];
+  }
+
   // Extract route elevation/distance data from the response
   function extractRouteData(data) {
     try {
@@ -52,12 +57,35 @@
       // Get distance in cm, convert to meters
       const totalDistance = dataArray[route.distance] / 100;
 
-      // Parse simple_route for elevation range
-      const routePoints = JSON.parse(dataArray[route.simple_route]);
-      const minElev = Math.min(...routePoints.map(p => p[2]));
-      const maxElev = Math.max(...routePoints.map(p => p[2]));
+      // Extract route_intermediate for full-precision elevation/distance data
+      const intermediateIdx = dataArray[0]?.route_intermediate;
+      if (!intermediateIdx) {
+        console.warn('[Gradient Colors] No route_intermediate found, falling back to simple_route');
+        const simpleRoute = JSON.parse(dataArray[route.simple_route]);
+        const minElev = Math.min(...simpleRoute.map(p => p[2]));
+        const maxElev = Math.max(...simpleRoute.map(p => p[2]));
+        return { totalDistance, minElev, maxElev, routePoints: null };
+      }
 
-      return { totalDistance, minElev, maxElev };
+      const intermediateRefs = deref(dataArray, intermediateIdx);
+      const routePoints = [];
+
+      for (const pointIdx of intermediateRefs) {
+        const pointRefs = deref(dataArray, pointIdx);
+        // Point structure: [lat_idx, lng_idx, ele_idx, distance_idx, smoothed_ele_idx]
+        const elevation = deref(dataArray, pointRefs[2]); // Raw elevation (not smoothed)
+        const distance = deref(dataArray, pointRefs[3]);  // Distance in meters
+        routePoints.push({ distance, elevation });
+      }
+
+      // Compute min/max elevation from route points
+      const elevations = routePoints.map(p => p.elevation);
+      const minElev = Math.min(...elevations);
+      const maxElev = Math.max(...elevations);
+
+      console.log('[Gradient Colors] Extracted', routePoints.length, 'route points');
+
+      return { totalDistance, minElev, maxElev, routePoints };
     } catch (e) {
       console.error('[Gradient Colors] Error extracting route data:', e);
       return null;
@@ -148,6 +176,47 @@
     const band = Math.max(-3, Math.min(2, Math.floor(normalized)));
     const t = normalized - band;
     return lerpColor(settings.colorStops[band + 3], settings.colorStops[band + 4], t);
+  }
+
+  // Interpolate elevation at a given distance using route points
+  function interpolateElevation(routePoints, distance) {
+    if (routePoints.length === 0) return 0;
+    if (distance <= routePoints[0].distance) return routePoints[0].elevation;
+    if (distance >= routePoints[routePoints.length - 1].distance) {
+      return routePoints[routePoints.length - 1].elevation;
+    }
+
+    // Binary search for the right segment
+    let lo = 0, hi = routePoints.length - 1;
+    while (lo < hi - 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (routePoints[mid].distance <= distance) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+
+    const p1 = routePoints[lo];
+    const p2 = routePoints[hi];
+    const t = (distance - p1.distance) / (p2.distance - p1.distance);
+    return p1.elevation + t * (p2.elevation - p1.elevation);
+  }
+
+  // Compute gradient (%) at a given distance using route points
+  // Uses a small window around the point to get a smoothed gradient
+  function computeGradientAtDistance(routePoints, distance, totalDistance, windowSize = 50) {
+    // Use a window of +/- windowSize meters (or available range)
+    const d1 = Math.max(0, distance - windowSize);
+    const d2 = Math.min(totalDistance, distance + windowSize);
+
+    const e1 = interpolateElevation(routePoints, d1);
+    const e2 = interpolateElevation(routePoints, d2);
+
+    const deltaD = d2 - d1;
+    if (deltaD <= 0) return 0;
+
+    return ((e2 - e1) / deltaD) * 100;
   }
 
   // Linear interpolation between two hex colors
@@ -242,49 +311,56 @@
     // Filter out y=1 points which are segment boundaries, not elevation data
     const elevationPoints = points.filter(p => p.y < 1);
 
-    // Calculate minimum X span so that one Y quantum (0.001) represents ≤ 1% gradient
-    // This addresses quantization noise from the limited precision of Y coordinates
-    const yQuantum = 0.001;
-    const maxGradientPerQuantum = 1; // 1% max gradient contribution per Y quantum
-    const minDX = (yQuantum * elevRange * 100) / (ySpan * maxGradientPerQuantum * totalDistance);
+    // Check if we have full route data for accurate gradient calculation
+    const { routePoints } = routeData;
+    const useRouteData = routePoints && routePoints.length > 1;
+
+    if (useRouteData) {
+      console.log('[Gradient Colors] Using route data for accurate gradients');
+    } else {
+      console.log('[Gradient Colors] Falling back to SVG-based gradient estimation');
+    }
 
     for (let i = 0; i < elevationPoints.length - 1; i++) {
       const p1 = elevationPoints[i];
       const p2 = elevationPoints[i + 1];
 
-      // Find points at least minDX apart (centered on this segment) for gradient calculation
-      const centerX = (p1.x + p2.x) / 2;
-      const targetStartX = centerX - minDX / 2;
-      const targetEndX = centerX + minDX / 2;
+      let gradient;
 
-      // Find starting point
-      let startIdx = i;
-      while (startIdx > 0 && elevationPoints[startIdx].x > targetStartX) {
-        startIdx--;
+      if (useRouteData) {
+        // Use route data for accurate gradient calculation
+        // SVG x is normalized (0-1), convert to distance
+        const centerX = (p1.x + p2.x) / 2;
+        const distance = centerX * totalDistance;
+        gradient = computeGradientAtDistance(routePoints, distance, totalDistance);
+      } else {
+        // Fallback: estimate gradient from SVG coordinates (has quantization noise)
+        const yQuantum = 0.001;
+        const maxGradientPerQuantum = 1;
+        const minDX = (yQuantum * elevRange * 100) / (ySpan * maxGradientPerQuantum * totalDistance);
+
+        const centerX = (p1.x + p2.x) / 2;
+        const targetStartX = centerX - minDX / 2;
+        const targetEndX = centerX + minDX / 2;
+
+        let startIdx = i;
+        while (startIdx > 0 && elevationPoints[startIdx].x > targetStartX) {
+          startIdx--;
+        }
+
+        let endIdx = i + 1;
+        while (endIdx < elevationPoints.length - 1 && elevationPoints[endIdx].x < targetEndX) {
+          endIdx++;
+        }
+
+        const pStart = elevationPoints[startIdx];
+        const pEnd = elevationPoints[endIdx];
+        const dY = pStart.y - pEnd.y;
+        const dX = pEnd.x - pStart.x;
+
+        if (dX <= 0) continue;
+        gradient = ((dY * elevRange) / (ySpan * dX * totalDistance)) * 100;
       }
-
-      // Find ending point
-      let endIdx = i + 1;
-      while (endIdx < elevationPoints.length - 1 && elevationPoints[endIdx].x < targetEndX) {
-        endIdx++;
-      }
-
-      const pStart = elevationPoints[startIdx];
-      const pEnd = elevationPoints[endIdx];
-
-      // Calculate gradient from the wider span
-      // SVG Y is inverted: 0 = top (high elev), 1 = bottom (low elev)
-      // So negative dY (going up visually) = climbing = positive gradient
-      const dY = pStart.y - pEnd.y; // Positive when climbing (Y decreasing)
-      const dX = pEnd.x - pStart.x;
-
-      if (dX <= 0) continue; // Skip invalid segments
-
-      // Convert normalized slope to actual gradient percentage
-      // dY/ySpan = proportion of elevation range
-      // (dY/ySpan) * elevRange = elevation change in meters
-      // dX * totalDistance = distance change in meters
-      const gradient = ((dY * elevRange) / (ySpan * dX * totalDistance)) * 100;
 
       const color = gradientToColor(gradient);
 
