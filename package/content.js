@@ -225,13 +225,10 @@
     // Remove any existing polygons we created
     svg.querySelectorAll('polygon').forEach(p => p.remove());
 
-    // Hide filled polylines (the dark fill that would cover our gradient)
-    // Keep only the stroke polyline visible
+    // Hide ALL filled polylines (including Biketerra's colored gradients)
+    // Our gradient polygons will replace them
     svg.querySelectorAll('polyline[fill]:not([fill="none"])').forEach(pl => {
-      // Don't hide the position indicator (it has var(--bt-a) fill and is small)
-      if (!pl.getAttribute('fill').includes('var(')) {
-        pl.style.display = 'none';
-      }
+      pl.style.display = 'none';
     });
 
     // Hide OLD stroke polylines (not the active one)
@@ -245,15 +242,41 @@
     // Filter out y=1 points which are segment boundaries, not elevation data
     const elevationPoints = points.filter(p => p.y < 1);
 
+    // Calculate minimum X span so that one Y quantum (0.001) represents ≤ 1% gradient
+    // This addresses quantization noise from the limited precision of Y coordinates
+    const yQuantum = 0.001;
+    const maxGradientPerQuantum = 1; // 1% max gradient contribution per Y quantum
+    const minDX = (yQuantum * elevRange * 100) / (ySpan * maxGradientPerQuantum * totalDistance);
+
     for (let i = 0; i < elevationPoints.length - 1; i++) {
       const p1 = elevationPoints[i];
       const p2 = elevationPoints[i + 1];
 
-      // Calculate gradient directly from polyline slope
+      // Find points at least minDX apart (centered on this segment) for gradient calculation
+      const centerX = (p1.x + p2.x) / 2;
+      const targetStartX = centerX - minDX / 2;
+      const targetEndX = centerX + minDX / 2;
+
+      // Find starting point
+      let startIdx = i;
+      while (startIdx > 0 && elevationPoints[startIdx].x > targetStartX) {
+        startIdx--;
+      }
+
+      // Find ending point
+      let endIdx = i + 1;
+      while (endIdx < elevationPoints.length - 1 && elevationPoints[endIdx].x < targetEndX) {
+        endIdx++;
+      }
+
+      const pStart = elevationPoints[startIdx];
+      const pEnd = elevationPoints[endIdx];
+
+      // Calculate gradient from the wider span
       // SVG Y is inverted: 0 = top (high elev), 1 = bottom (low elev)
       // So negative dY (going up visually) = climbing = positive gradient
-      const dY = p1.y - p2.y; // Positive when climbing (Y decreasing)
-      const dX = p2.x - p1.x;
+      const dY = pStart.y - pEnd.y; // Positive when climbing (Y decreasing)
+      const dX = pEnd.x - pStart.x;
 
       if (dX <= 0) continue; // Skip invalid segments
 
@@ -267,13 +290,13 @@
 
       // Create a filled polygon for this segment
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      // Add small overlap to prevent dark lines from floating point imprecision
-      const overlap = 0.001;
-      const x2Overlap = Math.min(p2.x + overlap, 1);
-      const polygonPoints = `${p1.x},1 ${p1.x},${p1.y} ${x2Overlap},${p2.y} ${x2Overlap},1`;
+      const polygonPoints = `${p1.x},1 ${p1.x},${p1.y} ${p2.x},${p2.y} ${p2.x},1`;
       polygon.setAttribute('points', polygonPoints);
       polygon.setAttribute('fill', color);
-      polygon.setAttribute('stroke', 'none');
+      // Use matching stroke to cover hairline gaps between adjacent polygons
+      polygon.setAttribute('stroke', color);
+      polygon.setAttribute('stroke-width', '1.5');
+      polygon.setAttribute('vector-effect', 'non-scaling-stroke');
 
       // Insert before the stroke line
       svg.insertBefore(polygon, strokePolyline);

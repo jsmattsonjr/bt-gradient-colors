@@ -44,3 +44,4 @@ Change Log
 1.2 — Fixed incorrect colors for short routes.
 2.0 — Added options page with customizable gradient colors, adjustable grade ranges, live preview, and cross-browser sync.
 2.0.1 — Fixed elevation profile not matching original at sharp peaks.
+2.0.2 — Fixed gradient color noise from Y-coordinate quantization; fixed polygons extending above elevation line; ensured all original fill colors are hidden.
