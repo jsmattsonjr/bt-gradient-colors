@@ -110,7 +110,7 @@ npm install
 
 **How It Works:**
 1. Finds route ID from DOM elements (`.route-id` selector)
-2. Fetches route data from Biketerra's API: `https://biketerra.com/ride/__data.json?route={routeId}`
+2. Fetches route data from Biketerra's API: `https://biketerra.com/routes/{routeId}/__data.json`
 3. Extracts elevation/distance data from SvelteKit-formatted JSON response
 4. Processes SVG elevation graph to apply gradient coloring
 5. Creates filled polygons for gradient segments

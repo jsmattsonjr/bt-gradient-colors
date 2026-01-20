@@ -21,7 +21,7 @@
   // Fetch route data from Biketerra API
   async function fetchRouteData(routeId) {
     try {
-      const url = `https://biketerra.com/ride/__data.json?route=${routeId}`;
+      const url = `https://biketerra.com/routes/${routeId}/__data.json`;
       console.log('[Gradient Colors] Fetching route data from:', url);
 
       const response = await fetch(url);
@@ -45,36 +45,32 @@
   // Extract route elevation/distance data from the response
   function extractRouteData(data) {
     try {
-      const dataArray = data.nodes?.[1]?.data;
+      const dataArray = data.nodes?.[2]?.data;
       if (!dataArray) return null;
 
-      // Follow route reference chain
-      const routeIdx = dataArray[0]?.route;
-      if (!routeIdx) return null;
-
-      const route = dataArray[routeIdx];
+      // Get field schema and route data
+      const refs = dataArray[0];
+      const schema = dataArray[refs.route];
+      if (!schema) return null;
 
       // Get distance in cm, convert to meters
-      const totalDistance = dataArray[route.distance] / 100;
+      const totalDistance = dataArray[schema.distance] / 100;
 
-      // Extract route_intermediate for full-precision elevation/distance data
-      const intermediateIdx = dataArray[0]?.route_intermediate;
-      if (!intermediateIdx) {
-        console.warn('[Gradient Colors] No route_intermediate found, falling back to simple_route');
-        const simpleRoute = JSON.parse(dataArray[route.simple_route]);
-        const minElev = Math.min(...simpleRoute.map(p => p[2]));
-        const maxElev = Math.max(...simpleRoute.map(p => p[2]));
-        return { totalDistance, minElev, maxElev, routePoints: null };
+      // Extract latLngData for full-precision elevation/distance data
+      const latLngDataIdx = refs.latLngData;
+      if (!latLngDataIdx) {
+        console.warn('[Gradient Colors] No latLngData found');
+        return null;
       }
 
-      const intermediateRefs = deref(dataArray, intermediateIdx);
+      const latLngData = deref(dataArray, latLngDataIdx);
       const routePoints = [];
 
-      for (const pointIdx of intermediateRefs) {
+      for (const pointIdx of latLngData) {
         const pointRefs = deref(dataArray, pointIdx);
         // Point structure: [lat_idx, lng_idx, ele_idx, distance_idx, smoothed_ele_idx]
-        const elevation = deref(dataArray, pointRefs[2]); // Raw elevation (not smoothed)
-        const distance = deref(dataArray, pointRefs[3]);  // Distance in meters
+        const elevation = deref(dataArray, pointRefs[2]); // Raw elevation
+        const distance = deref(dataArray, pointRefs[3]); // Distance in meters
         routePoints.push({ distance, elevation });
       }
 
@@ -187,7 +183,8 @@
     }
 
     // Binary search for the right segment
-    let lo = 0, hi = routePoints.length - 1;
+    let lo = 0,
+      hi = routePoints.length - 1;
     while (lo < hi - 1) {
       const mid = Math.floor((lo + hi) / 2);
       if (routePoints[mid].distance <= distance) {
@@ -291,14 +288,10 @@
     const svgElevs = sampleXs.map(x => -getSvgYAtX(svgPoints, x));
 
     // Get forward route elevations at same normalized positions
-    const fwdElevs = sampleXs.map(x =>
-      interpolateElevation(routePoints, x * totalDistance)
-    );
+    const fwdElevs = sampleXs.map(x => interpolateElevation(routePoints, x * totalDistance));
 
     // Get reverse route elevations (x=0 maps to end of route)
-    const revElevs = sampleXs.map(x =>
-      interpolateElevation(routePoints, (1 - x) * totalDistance)
-    );
+    const revElevs = sampleXs.map(x => interpolateElevation(routePoints, (1 - x) * totalDistance));
 
     // Normalize all arrays for comparison (removes scale differences)
     const svgNorm = normalizeArray(svgElevs);
@@ -313,9 +306,12 @@
     console.log(
       '[Gradient Colors] Direction detection:',
       direction,
-      '(fwdErr:', fwdError.toFixed(4),
-      'revErr:', revError.toFixed(4),
-      'maxAsymmetry:', asymmetricPositions[0].diff.toFixed(1) + 'm)'
+      '(fwdErr:',
+      fwdError.toFixed(4),
+      'revErr:',
+      revError.toFixed(4),
+      'maxAsymmetry:',
+      asymmetricPositions[0].diff.toFixed(1) + 'm)'
     );
     return direction;
   }
@@ -437,9 +433,7 @@
         // SVG x is normalized (0-1), convert to distance
         const centerX = (p1.x + p2.x) / 2;
         // If reversed, x=0 is end of route, x=1 is start
-        const distance = isReversed
-          ? (1 - centerX) * totalDistance
-          : centerX * totalDistance;
+        const distance = isReversed ? (1 - centerX) * totalDistance : centerX * totalDistance;
         gradient = computeGradientAtDistance(routePoints, distance, totalDistance);
         // Negate gradient when reversed (going backwards on the route)
         if (isReversed) gradient = -gradient;
@@ -447,7 +441,8 @@
         // Fallback: estimate gradient from SVG coordinates (has quantization noise)
         const yQuantum = 0.001;
         const maxGradientPerQuantum = 1;
-        const minDX = (yQuantum * elevRange * 100) / (ySpan * maxGradientPerQuantum * totalDistance);
+        const minDX =
+          (yQuantum * elevRange * 100) / (ySpan * maxGradientPerQuantum * totalDistance);
 
         const centerX = (p1.x + p2.x) / 2;
         const targetStartX = centerX - minDX / 2;
