@@ -256,66 +256,68 @@
     return arr.map(v => (v - min) / range);
   }
 
+  // Find positions where forward and reverse elevations differ most
+  // Returns array of {x, diff} sorted by difference (largest first)
+  function findAsymmetricPositions(routePoints, totalDistance, numCandidates = 100) {
+    const candidates = [];
+    for (let i = 1; i < numCandidates; i++) {
+      const x = i / numCandidates;
+      const fwdElev = interpolateElevation(routePoints, x * totalDistance);
+      const revElev = interpolateElevation(routePoints, (1 - x) * totalDistance);
+      candidates.push({ x, diff: Math.abs(fwdElev - revElev) });
+    }
+    return candidates.sort((a, b) => b.diff - a.diff);
+  }
+
   // Detect whether SVG matches forward or reversed route
-  // Uses adaptive sampling - adds more points if uncertain
+  // Samples at positions where forward/reverse elevations differ most
   function detectRouteDirection(svgPoints, routePoints, totalDistance) {
-    // Start with sample points at 10%, 50%, 90%
-    let sampleXs = [0.1, 0.5, 0.9];
-    const minConfidenceRatio = 2.0; // Forward error should be 2x smaller (or vice versa)
-    const maxSamples = 17; // Max sample points before giving up
+    // Find positions where forward and reverse routes differ most
+    const asymmetricPositions = findAsymmetricPositions(routePoints, totalDistance);
 
-    while (sampleXs.length <= maxSamples) {
-      // Get SVG Y values at sample points (negate because lower Y = higher elevation)
-      const svgElevs = sampleXs.map(x => -getSvgYAtX(svgPoints, x));
-
-      // Get forward route elevations at same normalized positions
-      const fwdElevs = sampleXs.map(x =>
-        interpolateElevation(routePoints, x * totalDistance)
+    // If route is nearly symmetrical (max difference < 1m), direction doesn't matter
+    if (asymmetricPositions[0].diff < 1) {
+      console.log(
+        '[Gradient Colors] Direction detection: forward (route is symmetrical, max diff:',
+        asymmetricPositions[0].diff.toFixed(2) + 'm)'
       );
-
-      // Get reverse route elevations (x=0 maps to end of route)
-      const revElevs = sampleXs.map(x =>
-        interpolateElevation(routePoints, (1 - x) * totalDistance)
-      );
-
-      // Normalize all arrays for comparison (removes scale differences)
-      const svgNorm = normalizeArray(svgElevs);
-      const fwdNorm = normalizeArray(fwdElevs);
-      const revNorm = normalizeArray(revElevs);
-
-      // Compute errors
-      const fwdError = sumSquaredError(svgNorm, fwdNorm);
-      const revError = sumSquaredError(svgNorm, revNorm);
-
-      // Check confidence
-      const ratio = Math.max(fwdError, revError) / (Math.min(fwdError, revError) || 0.0001);
-
-      if (ratio >= minConfidenceRatio || sampleXs.length >= maxSamples) {
-        const direction = fwdError <= revError ? 'forward' : 'reverse';
-        console.log(
-          '[Gradient Colors] Direction detection:',
-          direction,
-          '(fwdErr:', fwdError.toFixed(4),
-          'revErr:', revError.toFixed(4),
-          'ratio:', ratio.toFixed(2),
-          'samples:', sampleXs.length + ')'
-        );
-        return direction;
-      }
-
-      // Not confident enough - bisect ranges and add more sample points
-      const newSampleXs = [];
-      for (let i = 0; i < sampleXs.length - 1; i++) {
-        newSampleXs.push(sampleXs[i]);
-        newSampleXs.push((sampleXs[i] + sampleXs[i + 1]) / 2);
-      }
-      newSampleXs.push(sampleXs[sampleXs.length - 1]);
-      sampleXs = newSampleXs;
+      return 'forward';
     }
 
-    // Default to forward if still uncertain
-    console.log('[Gradient Colors] Direction uncertain, defaulting to forward');
-    return 'forward';
+    // Take top 5 most asymmetric positions as sample points
+    const sampleXs = asymmetricPositions.slice(0, 5).map(p => p.x);
+
+    // Get SVG Y values at sample points (negate because lower Y = higher elevation)
+    const svgElevs = sampleXs.map(x => -getSvgYAtX(svgPoints, x));
+
+    // Get forward route elevations at same normalized positions
+    const fwdElevs = sampleXs.map(x =>
+      interpolateElevation(routePoints, x * totalDistance)
+    );
+
+    // Get reverse route elevations (x=0 maps to end of route)
+    const revElevs = sampleXs.map(x =>
+      interpolateElevation(routePoints, (1 - x) * totalDistance)
+    );
+
+    // Normalize all arrays for comparison (removes scale differences)
+    const svgNorm = normalizeArray(svgElevs);
+    const fwdNorm = normalizeArray(fwdElevs);
+    const revNorm = normalizeArray(revElevs);
+
+    // Compute errors
+    const fwdError = sumSquaredError(svgNorm, fwdNorm);
+    const revError = sumSquaredError(svgNorm, revNorm);
+
+    const direction = fwdError <= revError ? 'forward' : 'reverse';
+    console.log(
+      '[Gradient Colors] Direction detection:',
+      direction,
+      '(fwdErr:', fwdError.toFixed(4),
+      'revErr:', revError.toFixed(4),
+      'maxAsymmetry:', asymmetricPositions[0].diff.toFixed(1) + 'm)'
+    );
+    return direction;
   }
 
   // Linear interpolation between two hex colors
