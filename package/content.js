@@ -503,24 +503,6 @@
     return points;
   }
 
-  // Get Y value at a given X position using linear interpolation
-  function getYAtX(points, targetX) {
-    if (points.length === 0) return null;
-    if (targetX <= points[0].x) return points[0].y;
-    if (targetX >= points[points.length - 1].x) return points[points.length - 1].y;
-
-    for (let i = 1; i < points.length; i++) {
-      if (points[i].x >= targetX) {
-        const prev = points[i - 1];
-        const curr = points[i];
-        const t = (targetX - prev.x) / (curr.x - prev.x);
-        return prev.y + (curr.y - prev.y) * t;
-      }
-    }
-
-    return null;
-  }
-
   // Watch for DOM changes (new SVGs, route ID appearing, grade circle)
   const domObserver = new MutationObserver(function (mutations) {
     for (const mutation of mutations) {
