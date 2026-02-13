@@ -129,6 +129,7 @@
   const DEFAULT_SETTINGS = {
     colorStops: ['#713071', '#0c4ae0', '#28eaed', '#24ca26', '#f1f060', '#d90916', '#430102'],
     distance: 7,
+    toggleKey: 'g',
   };
 
   // Current settings (loaded from storage)
@@ -153,6 +154,9 @@
       }
       if (changes.distance) {
         settings.distance = changes.distance.newValue;
+      }
+      if (changes.toggleKey) {
+        settings.toggleKey = changes.toggleKey.newValue;
       }
       console.log('[Gradient Colors] Settings updated:', settings);
       // Reprocess SVG with new colors
@@ -602,7 +606,7 @@
     // Ignore if typing in an input field
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-    if (e.key === 'g' || e.key === 'G') {
+    if (e.key.toLowerCase() === settings.toggleKey) {
       const elevPanel =
         document.querySelector('.elev-graph') || document.querySelector('.panel-elevation-profile');
       if (elevPanel) {

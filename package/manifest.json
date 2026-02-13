@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Biketerra Gradient Colors",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Replaces Biketerra elevation graph colors with Veloviewer-inspired gradient coloring",
   "permissions": ["storage"],
   "options_ui": {

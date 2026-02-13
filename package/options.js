@@ -2,6 +2,7 @@
 const DEFAULTS = {
   colorStops: ['#713071', '#0c4ae0', '#28eaed', '#24ca26', '#f1f060', '#d90916', '#430102'],
   distance: 7,
+  toggleKey: 'g',
 };
 
 // Last saved settings (to track modifications)
@@ -14,12 +15,14 @@ function getCurrentSettings() {
     colorStops.push(document.getElementById('color' + i).value.toLowerCase());
   }
   const distance = parseFloat(document.getElementById('distance').value) || 7;
-  return { colorStops, distance };
+  const toggleKey = document.getElementById('toggleKey').value.toLowerCase() || 'g';
+  return { colorStops, distance, toggleKey };
 }
 
 // Compare two settings objects
 function settingsEqual(a, b) {
   if (a.distance !== b.distance) return false;
+  if (a.toggleKey !== b.toggleKey) return false;
   for (let i = 0; i < 7; i++) {
     if (a.colorStops[i].toLowerCase() !== b.colorStops[i].toLowerCase()) return false;
   }
@@ -50,9 +53,11 @@ function loadSettings() {
       document.getElementById('color' + i).value = settings.colorStops[i];
     }
     document.getElementById('distance').value = settings.distance;
+    document.getElementById('toggleKey').value = settings.toggleKey;
     savedSettings = {
       colorStops: settings.colorStops.map(c => c.toLowerCase()),
       distance: settings.distance,
+      toggleKey: settings.toggleKey,
     };
     updatePreview();
     updateLabels(settings.distance);
@@ -78,6 +83,7 @@ function resetSettings() {
     document.getElementById('color' + i).value = DEFAULTS.colorStops[i];
   }
   document.getElementById('distance').value = DEFAULTS.distance;
+  document.getElementById('toggleKey').value = DEFAULTS.toggleKey;
   updatePreview();
   updateLabels(DEFAULTS.distance);
   updateButtonStates();
@@ -164,5 +170,10 @@ for (let i = 0; i < 7; i++) {
 // Update labels and button states on distance change
 document.getElementById('distance').addEventListener('input', function () {
   updateLabels(parseFloat(this.value) || 7);
+  updateButtonStates();
+});
+
+// Update button states on toggle key change
+document.getElementById('toggleKey').addEventListener('input', function () {
   updateButtonStates();
 });

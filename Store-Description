@@ -4,7 +4,7 @@ Biketerra Gradient Colors enhances your Biketerra experience by replacing the de
 
   • Dynamic Elevation Graphs - Automatically recolors elevation profile SVGs with gradient-based colors
   • Grade Indicators - Updates the GRADE stat circle with matching gradient colors
-  • Keyboard Shortcut - Press 'G' to toggle the elevation panel between global and local zoom
+  • Keyboard Shortcut - Press a key to toggle the elevation panel between global and local zoom (default 'G', configurable)
   • Customizable Colors - Options page with color pickers for all 7 gradient color stops
   • Adjustable Grade Range - Configure the grade percentage per color band (default 7%)
   • Live Preview - Real-time gradient preview as you adjust settings
@@ -27,10 +27,10 @@ Biketerra Gradient Colors enhances your Biketerra experience by replacing the de
   1. Ride or spectate on Biketerra.com
   2. The elevation profile will automatically be recolored with gradient colors
   3. The GRADE indicator circle will display the appropriate gradient color
-  4. Press 'G' to toggle elevation zoom modes
-  5. Right-click the extension icon and select "Options" to customize colors and grade ranges
+  4. Press 'G' (or your configured key) to toggle elevation zoom modes
+  5. Right-click the extension icon and select "Options" to customize colors, grade ranges, and keyboard shortcut
 
-This extension works automatically when riding or spectating on Biketerra. Optionally customize the gradient colors and grade ranges via the extension options page.
+This extension works automatically when riding or spectating on Biketerra. Optionally customize the gradient colors, grade ranges, and keyboard shortcut via the extension options page.
 
 Source code is available at <https://github.com/jsmattsonjr/bt-gradient-colors>.
 
@@ -47,3 +47,4 @@ Change Log
 2.0.2 — Fixed gradient color noise from Y-coordinate quantization; fixed polygons extending above elevation line; ensured all original fill colors are hidden.
 3.0.0 — Major accuracy improvement: now uses full-precision route data from Biketerra API instead of reverse-engineering from SVG coordinates; adds automatic detection of forward/reverse route direction.
 3.0.1 — Fixed direction detection for symmetrical start/finish routes; updated to new Biketerra API endpoint.
+3.1.0 — Made the chart scale toggle keyboard shortcut configurable via the options page.
