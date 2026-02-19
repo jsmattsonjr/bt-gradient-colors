@@ -56,22 +56,38 @@
       // Get distance in cm, convert to meters
       const totalDistance = dataArray[schema.distance] / 100;
 
-      // Extract latLngData for full-precision elevation/distance data
-      const latLngDataIdx = refs.latLngData;
-      if (!latLngDataIdx) {
-        console.warn('[Gradient Colors] No latLngData found');
-        return null;
+      let routePoints = [];
+
+      // Try simple_route first (new format: JSON string of [lat, lng, elev, distance] arrays)
+      const simpleRouteIdx = schema.simple_route;
+      if (simpleRouteIdx) {
+        const simpleRouteStr = dataArray[simpleRouteIdx];
+        if (typeof simpleRouteStr === 'string') {
+          const simpleRoute = JSON.parse(simpleRouteStr);
+          routePoints = simpleRoute.map(p => ({ distance: p[3], elevation: p[2] }));
+        }
       }
 
-      const latLngData = deref(dataArray, latLngDataIdx);
-      const routePoints = [];
+      // Fall back to old latLngData format
+      if (routePoints.length === 0) {
+        const latLngDataIdx = refs.latLngData;
+        if (!latLngDataIdx) {
+          console.warn('[Gradient Colors] No route point data found');
+          return null;
+        }
 
-      for (const pointIdx of latLngData) {
-        const pointRefs = deref(dataArray, pointIdx);
-        // Point structure: [lat_idx, lng_idx, ele_idx, distance_idx, smoothed_ele_idx]
-        const elevation = deref(dataArray, pointRefs[2]); // Raw elevation
-        const distance = deref(dataArray, pointRefs[3]); // Distance in meters
-        routePoints.push({ distance, elevation });
+        const latLngData = deref(dataArray, latLngDataIdx);
+        for (const pointIdx of latLngData) {
+          const pointRefs = deref(dataArray, pointIdx);
+          const elevation = deref(dataArray, pointRefs[2]);
+          const distance = deref(dataArray, pointRefs[3]);
+          routePoints.push({ distance, elevation });
+        }
+      }
+
+      if (routePoints.length === 0) {
+        console.warn('[Gradient Colors] No route points extracted');
+        return null;
       }
 
       // Compute min/max elevation from route points
