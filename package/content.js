@@ -353,6 +353,14 @@
     return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
   }
 
+  // Convert hex color (#rrggbb) to rgb() string for comparison with computed styles
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+  }
+
   // Process the elevation SVG and recolor it
   function processElevationSVG() {
     const routeData = window._biketerraRouteData;
@@ -654,7 +662,16 @@
       // Skip if we're the ones making the change
       if (isUpdatingCircle) return;
 
-      updateGradientCircleColor(circle);
+      // Only update if the color is actually wrong (avoids infinite loops
+      // while still catching overwrites that arrive during the guard window)
+      const valueElem = circle.parentElement?.querySelector('.stat-circle-value');
+      const gradient = valueElem ? parseFloat(valueElem.textContent) : NaN;
+      if (!isNaN(gradient)) {
+        const expected = gradientToColor(gradient);
+        if (circle.style.getPropertyValue('background-color') !== hexToRgb(expected)) {
+          updateGradientCircleColor(circle);
+        }
+      }
     });
 
     // Watch style attribute changes on the circle fill
@@ -712,9 +729,13 @@
         'important'
       );
 
-      // Clear guard after a brief delay (allow mutation to fire and be ignored)
+      // Clear guard after a brief delay (allow mutation to fire and be ignored),
+      // then verify our color wasn't overwritten during the guard window
       setTimeout(function () {
         isUpdatingCircle = false;
+        if (circle.style.getPropertyValue('background-color') !== hexToRgb(color)) {
+          updateGradientCircleColor(circle);
+        }
       }, 10);
     }
   }
