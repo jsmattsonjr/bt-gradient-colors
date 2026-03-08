@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Biketerra Gradient Colors",
-  "version": "3.1.2",
+  "version": "3.1.3",
   "description": "Replaces Biketerra elevation graph colors with Veloviewer-inspired gradient coloring",
   "permissions": ["storage"],
   "options_ui": {
@@ -10,6 +10,11 @@
   },
   "host_permissions": ["https://biketerra.com/*"],
   "content_scripts": [
+    {
+      "matches": ["https://biketerra.com/spectate/*", "https://biketerra.com/ride*"],
+      "css": ["hide-grade-circle.css"],
+      "run_at": "document_start"
+    },
     {
       "matches": ["https://biketerra.com/spectate/*", "https://biketerra.com/ride*"],
       "js": ["content.js"],

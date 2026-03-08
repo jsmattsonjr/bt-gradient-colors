@@ -1,0 +1,14 @@
+/*
+ * Injected at document_start to prevent Biketerra's grade circle color
+ * from flashing before the extension can set the correct gradient color.
+ *
+ * Specificity chain:
+ *   Biketerra sets background-color via inline style (no !important)
+ *   → This stylesheet !important rule wins, hiding Biketerra's color
+ *   → Extension JS then sets inline style WITH !important, which wins
+ *     over this stylesheet !important rule
+ */
+.panel-grade .stat-circle-fill,
+.stat-grade .stat-circle-fill {
+  background-color: transparent !important;
+}
