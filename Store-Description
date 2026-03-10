@@ -50,3 +50,4 @@ Change Log
 3.1.0 — Made the chart scale toggle keyboard shortcut configurable via the options page.
 3.1.1 — Updated to new Biketerra API data format, with fallback for compatibility.
 3.1.2 — Fixed race condition where Biketerra could overwrite the GRADE circle color.
+3.1.3 — Eliminated GRADE circle color flash with early CSS injection.
