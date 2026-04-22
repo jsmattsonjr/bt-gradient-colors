@@ -37,11 +37,6 @@
     }
   }
 
-  // Dereference a pointer index in the Biketerra data array
-  function deref(dataArray, index) {
-    return dataArray[index];
-  }
-
   // Extract route elevation/distance data from the response
   function extractRouteData(data) {
     try {
@@ -56,34 +51,17 @@
       // Get distance in cm, convert to meters
       const totalDistance = dataArray[schema.distance] / 100;
 
-      let routePoints = [];
-
-      // Try simple_route first (new format: JSON string of [lat, lng, elev, distance] arrays)
-      const simpleRouteIdx = schema.simple_route;
-      if (simpleRouteIdx) {
-        const simpleRouteStr = dataArray[simpleRouteIdx];
-        if (typeof simpleRouteStr === 'string') {
-          const simpleRoute = JSON.parse(simpleRouteStr);
-          routePoints = simpleRoute.map(p => ({ distance: p[3], elevation: p[2] }));
-        }
+      // simple_route is a JSON string of [lat, lng, elev, distance] quartets
+      const simpleRouteStr = dataArray[schema.simple_route];
+      if (typeof simpleRouteStr !== 'string') {
+        console.warn('[Gradient Colors] simple_route not found');
+        return null;
       }
 
-      // Fall back to old latLngData format
-      if (routePoints.length === 0) {
-        const latLngDataIdx = refs.latLngData;
-        if (!latLngDataIdx) {
-          console.warn('[Gradient Colors] No route point data found');
-          return null;
-        }
-
-        const latLngData = deref(dataArray, latLngDataIdx);
-        for (const pointIdx of latLngData) {
-          const pointRefs = deref(dataArray, pointIdx);
-          const elevation = deref(dataArray, pointRefs[2]);
-          const distance = deref(dataArray, pointRefs[3]);
-          routePoints.push({ distance, elevation });
-        }
-      }
+      const routePoints = JSON.parse(simpleRouteStr).map(p => ({
+        distance: p[3],
+        elevation: p[2],
+      }));
 
       if (routePoints.length === 0) {
         console.warn('[Gradient Colors] No route points extracted');
