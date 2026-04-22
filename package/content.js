@@ -390,7 +390,7 @@
     console.log('[Gradient Colors] Processing SVG with route data...');
 
     // Find ALL stroke polylines - we only want the LAST one (the active one)
-    const strokePolylines = svg.querySelectorAll('polyline[stroke="#fffa"]');
+    const strokePolylines = svg.querySelectorAll('polyline[stroke="var(--white-4)"]');
     if (strokePolylines.length === 0) {
       console.log('[Gradient Colors] No stroke polylines found');
       return;
@@ -426,9 +426,9 @@
     // Remove any existing polygons we created
     svg.querySelectorAll('polygon').forEach(p => p.remove());
 
-    // Hide ALL filled polylines (including Biketerra's colored gradients)
+    // Hide ALL filled paths (including Biketerra's colored gradients)
     // Our gradient polygons will replace them
-    svg.querySelectorAll('polyline[fill]:not([fill="none"])').forEach(pl => {
+    svg.querySelectorAll('path[fill]:not([fill="none"])').forEach(pl => {
       pl.style.display = 'none';
     });
 
