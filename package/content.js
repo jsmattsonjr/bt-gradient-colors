@@ -21,7 +21,7 @@
   // Fetch route data from Biketerra API
   async function fetchRouteData(routeId) {
     try {
-      const url = `https://biketerra.com/routes/${routeId}/__data.json`;
+      const url = `https://biketerra.com/ride/__data.json?route=${routeId}`;
       console.log('[Gradient Colors] Fetching route data from:', url);
 
       const response = await fetch(url);
@@ -40,42 +40,71 @@
   // Extract route elevation/distance data from the response
   function extractRouteData(data) {
     try {
-      const dataArray = data.nodes?.[2]?.data;
-      if (!dataArray) return null;
+      // Find the node that contains route_processed (high-precision geometry)
+      const node = data.nodes.find(n => n?.data?.[0]?.route_processed != null);
+      if (!node) return null;
+      const d = node.data;
+      const refs = d[0];
 
-      // Get field schema and route data
-      const refs = dataArray[0];
-      const schema = dataArray[refs.route];
-      if (!schema) return null;
+      // Prefer route_processed: [x, y, z] triples in cm where y=elevation,
+      // x=east offset, z=south offset from geoMetrics median. Distance is
+      // computed as cumulative horizontal displacement between consecutive nodes.
+      const rpSchema = d[refs.route_processed];
+      if (rpSchema) {
+        const totalDistance = d[rpSchema.distance]; // meters
+        const nodeRefs = d[rpSchema.nodes];
 
-      // Get distance in cm, convert to meters
-      const totalDistance = dataArray[schema.distance] / 100;
+        let cumDist = 0, prevX = null, prevZ = null;
+        const routePoints = [];
+        for (const nodeRef of nodeRefs) {
+          const n = d[nodeRef];
+          const x = d[n[0]], y = d[n[1]], z = d[n[2]];
+          if (prevX !== null) {
+            const dx = x - prevX, dz = z - prevZ;
+            cumDist += Math.sqrt(dx * dx + dz * dz);
+          }
+          routePoints.push({ distance: cumDist / 100, elevation: y / 100 });
+          prevX = x;
+          prevZ = z;
+        }
 
-      // simple_route is a JSON string of [lat, lng, elev, distance] quartets
-      const simpleRouteStr = dataArray[schema.simple_route];
-      if (typeof simpleRouteStr !== 'string') {
-        console.warn('[Gradient Colors] simple_route not found');
-        return null;
+        if (routePoints.length > 0) {
+          const elevations = routePoints.map(p => p.elevation);
+          console.log('[Gradient Colors] Extracted', routePoints.length, 'route points from route_processed');
+          return {
+            totalDistance,
+            minElev: Math.min(...elevations),
+            maxElev: Math.max(...elevations),
+            routePoints,
+          };
+        }
       }
 
-      const routePoints = JSON.parse(simpleRouteStr).map(p => ({
-        distance: p[3],
-        elevation: p[2],
-      }));
-
-      if (routePoints.length === 0) {
-        console.warn('[Gradient Colors] No route points extracted');
-        return null;
+      // Fall back to simple_route: JSON string of [lat, lng, elev, distance] quartets
+      const routeSchema = d[refs.route];
+      if (routeSchema) {
+        const totalDistance = d[routeSchema.distance] / 100;
+        const simpleRouteStr = d[routeSchema.simple_route];
+        if (typeof simpleRouteStr === 'string') {
+          const routePoints = JSON.parse(simpleRouteStr).map(p => ({
+            distance: p[3],
+            elevation: p[2],
+          }));
+          if (routePoints.length > 0) {
+            const elevations = routePoints.map(p => p.elevation);
+            console.log('[Gradient Colors] Extracted', routePoints.length, 'route points from simple_route');
+            return {
+              totalDistance,
+              minElev: Math.min(...elevations),
+              maxElev: Math.max(...elevations),
+              routePoints,
+            };
+          }
+        }
       }
 
-      // Compute min/max elevation from route points
-      const elevations = routePoints.map(p => p.elevation);
-      const minElev = Math.min(...elevations);
-      const maxElev = Math.max(...elevations);
-
-      console.log('[Gradient Colors] Extracted', routePoints.length, 'route points');
-
-      return { totalDistance, minElev, maxElev, routePoints };
+      console.warn('[Gradient Colors] No route point data found');
+      return null;
     } catch (e) {
       console.error('[Gradient Colors] Error extracting route data:', e);
       return null;
