@@ -46,53 +46,30 @@
       const d = node.data;
       const refs = d[0];
 
-      // Prefer route_processed: [x, y, z] triples in cm where y=elevation,
-      // x=east offset, z=south offset from geoMetrics median. Distance is
-      // computed as cumulative horizontal displacement between consecutive nodes.
+      // route_processed (v2): each point is a [lat, lng, elevation, distance,
+      // rawElevation] tuple. elevation and distance are already in meters, with
+      // distance being the cumulative along-route distance, so no geometry math
+      // is needed. Values are deduplicated index references in SvelteKit's
+      // serialization, so each field must be dereferenced through d[].
       const rpSchema = d[refs.route_processed];
-      if (rpSchema) {
-        const totalDistance = d[rpSchema.distance]; // meters
-        const nodeRefs = d[rpSchema.nodes];
-
-        let cumDist = 0, prevX = null, prevZ = null;
-        const routePoints = [];
-        for (const nodeRef of nodeRefs) {
-          const n = d[nodeRef];
-          const x = d[n[0]], y = d[n[1]], z = d[n[2]];
-          if (prevX !== null) {
-            const dx = x - prevX, dz = z - prevZ;
-            cumDist += Math.sqrt(dx * dx + dz * dz);
+      if (rpSchema && rpSchema.points != null) {
+        const pointRefs = d[rpSchema.points];
+        if (Array.isArray(pointRefs)) {
+          const deref = ref => (typeof ref === 'number' ? d[ref] : ref);
+          const routePoints = [];
+          for (const pref of pointRefs) {
+            const p = d[pref];
+            if (!Array.isArray(p)) continue;
+            routePoints.push({
+              distance: deref(p[3]), // meters, cumulative
+              elevation: deref(p[2]), // meters (smoothed)
+            });
           }
-          routePoints.push({ distance: cumDist / 100, elevation: y / 100 });
-          prevX = x;
-          prevZ = z;
-        }
 
-        if (routePoints.length > 0) {
-          const elevations = routePoints.map(p => p.elevation);
-          console.log('[Gradient Colors] Extracted', routePoints.length, 'route points from route_processed');
-          return {
-            totalDistance,
-            minElev: Math.min(...elevations),
-            maxElev: Math.max(...elevations),
-            routePoints,
-          };
-        }
-      }
-
-      // Fall back to simple_route: JSON string of [lat, lng, elev, distance] quartets
-      const routeSchema = d[refs.route];
-      if (routeSchema) {
-        const totalDistance = d[routeSchema.distance] / 100;
-        const simpleRouteStr = d[routeSchema.simple_route];
-        if (typeof simpleRouteStr === 'string') {
-          const routePoints = JSON.parse(simpleRouteStr).map(p => ({
-            distance: p[3],
-            elevation: p[2],
-          }));
           if (routePoints.length > 0) {
+            const totalDistance = routePoints[routePoints.length - 1].distance;
             const elevations = routePoints.map(p => p.elevation);
-            console.log('[Gradient Colors] Extracted', routePoints.length, 'route points from simple_route');
+            console.log('[Gradient Colors] Extracted', routePoints.length, 'route points from route_processed');
             return {
               totalDistance,
               minElev: Math.min(...elevations),
