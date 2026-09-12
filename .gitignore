@@ -1,1 +1,10 @@
 node_modules/
+
+# Credentials — a saved __data.json embeds the account's API key and email.
+__data.json
+cookie.txt
+cookies.txt
+.env
+
+# macOS
+.DS_Store

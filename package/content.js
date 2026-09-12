@@ -6,8 +6,37 @@
 
   console.log('[Gradient Colors] Content script loaded');
 
-  // Find route ID from DOM (appears as "(#nnnn)" in route menu)
+  // Route ID from the page's own __data.json request, relayed by route-sniff.js
+  // because that runs in the main world and this does not.
+  let sniffedRouteId = null;
+
+  window.addEventListener('message', function (event) {
+    if (event.source !== window) return;
+    const data = event.data;
+    if (!data || data.source !== 'bt-gradient-colors-route' || !data.routeId) return;
+    if (sniffedRouteId === data.routeId) return;
+    sniffedRouteId = data.routeId;
+    console.log('[Gradient Colors] Route ID seen in the page request:', sniffedRouteId);
+    initialize();
+  });
+
+  // Ask for anything already caught before this listener existed
+  window.postMessage({ source: 'bt-gradient-colors-ping' }, window.location.origin);
+
+  // Find route ID, most to least reliable. ".route-id" only appears in the route
+  // menu, so on its own it finds nothing whenever the menu is closed.
   function findRouteId() {
+    if (sniffedRouteId) {
+      return sniffedRouteId;
+    }
+    const param = new URLSearchParams(window.location.search).get('route');
+    if (param && /^\d+$/.test(param)) {
+      return param;
+    }
+    const path = window.location.pathname.match(/\/(?:ride|spectate)\/(\d+)/);
+    if (path) {
+      return path[1];
+    }
     const routeIdElem = document.querySelector('.route-id');
     if (routeIdElem) {
       const match = routeIdElem.textContent.match(/#(\d+)/);

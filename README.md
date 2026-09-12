@@ -17,6 +17,7 @@ A Chrome extension that enhances [Biketerra](https://biketerra.com) elevation pr
 - **Customizable Colors**: Configure your own color stops and grade ranges via the options page
 - **Keyboard Shortcut**: Press `G` to toggle the elevation panel between global and local zoom
 - **Real-time Updates**: Monitors DOM changes to handle route reversals and dynamic content
+- **Reliable Route Detection**: Takes the route ID from the page's own data request, so recoloring starts even when the route menu is closed
 - **Settings Sync**: Your custom colors sync across Chrome browsers when signed in
 
 ### Gradient Color System
