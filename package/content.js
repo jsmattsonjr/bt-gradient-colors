@@ -4,7 +4,23 @@
 (function () {
   'use strict';
 
-  console.log('[Gradient Colors] Content script loaded');
+  // "[0.792] [Gradient Colors] ..." - seconds since navigation, the same clock
+  // and format as the site's own log lines, so ours interleave readably with them.
+  // performance.now() shares the page's time origin even from the isolated world.
+  function prefix() {
+    return '[' + +(performance.now() / 1000).toFixed(3) + '] [Gradient Colors]';
+  }
+  function log(...args) {
+    console.log(prefix(), ...args);
+  }
+  function warn(...args) {
+    console.warn(prefix(), ...args);
+  }
+  function error(...args) {
+    console.error(prefix(), ...args);
+  }
+
+  log('Content script loaded');
 
   // Route ID from the page's own __data.json request, relayed by route-sniff.js
   // because that runs in the main world and this does not.
@@ -16,7 +32,7 @@
     if (!data || data.source !== 'bt-gradient-colors-route' || !data.routeId) return;
     if (sniffedRouteId === data.routeId) return;
     sniffedRouteId = data.routeId;
-    console.log('[Gradient Colors] Route ID seen in the page request:', sniffedRouteId);
+    log('Route ID seen in the page request:', sniffedRouteId);
     initialize();
   });
 
@@ -51,7 +67,7 @@
   async function fetchRouteData(routeId) {
     try {
       const url = `https://biketerra.com/ride/__data.json?route=${routeId}`;
-      console.log('[Gradient Colors] Fetching route data from:', url);
+      log('Fetching route data from:', url);
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -61,7 +77,7 @@
       const data = await response.json();
       return extractRouteData(data);
     } catch (e) {
-      console.error('[Gradient Colors] Error fetching route data:', e);
+      error('Error fetching route data:', e);
       return null;
     }
   }
@@ -98,7 +114,7 @@
           if (routePoints.length > 0) {
             const totalDistance = routePoints[routePoints.length - 1].distance;
             const elevations = routePoints.map(p => p.elevation);
-            console.log('[Gradient Colors] Extracted', routePoints.length, 'route points from route_processed');
+            log('Extracted', routePoints.length, 'route points from route_processed');
             return {
               totalDistance,
               minElev: Math.min(...elevations),
@@ -109,10 +125,10 @@
         }
       }
 
-      console.warn('[Gradient Colors] No route point data found');
+      warn('No route point data found');
       return null;
     } catch (e) {
-      console.error('[Gradient Colors] Error extracting route data:', e);
+      error('Error extracting route data:', e);
       return null;
     }
   }
@@ -138,13 +154,13 @@
     }
     initializeInProgress = true;
 
-    console.log('[Gradient Colors] Found route ID:', routeId);
+    log('Found route ID:', routeId);
 
     const routeData = await fetchRouteData(routeId);
     initializeInProgress = false;
 
     if (routeData) {
-      console.log('[Gradient Colors] Got route data:', routeData);
+      log('Got route data:', routeData);
       window._biketerraRouteId = routeId;
       window._biketerraRouteData = routeData;
       processElevationSVG();
@@ -169,7 +185,7 @@
     return new Promise(resolve => {
       chrome.storage.sync.get(DEFAULT_SETTINGS, function (stored) {
         settings = stored;
-        console.log('[Gradient Colors] Loaded settings:', settings);
+        log('Loaded settings:', settings);
         resolve(settings);
       });
     });
@@ -187,7 +203,7 @@
       if (changes.toggleKey) {
         settings.toggleKey = changes.toggleKey.newValue;
       }
-      console.log('[Gradient Colors] Settings updated:', settings);
+      log('Settings updated:', settings);
       // Reprocess SVG with new colors
       const svg = document.querySelector('svg.pathSVG');
       if (svg) {
@@ -307,8 +323,8 @@
 
     // If route is nearly symmetrical (max difference < 1m), direction doesn't matter
     if (asymmetricPositions[0].diff < 1) {
-      console.log(
-        '[Gradient Colors] Direction detection: forward (route is symmetrical, max diff:',
+      log(
+        'Direction detection: forward (route is symmetrical, max diff:',
         asymmetricPositions[0].diff.toFixed(2) + 'm)'
       );
       return 'forward';
@@ -336,8 +352,8 @@
     const revError = sumSquaredError(svgNorm, revNorm);
 
     const direction = fwdError <= revError ? 'forward' : 'reverse';
-    console.log(
-      '[Gradient Colors] Direction detection:',
+    log(
+      'Direction detection:',
       direction,
       '(fwdErr:',
       fwdError.toFixed(4),
@@ -378,13 +394,13 @@
   function processElevationSVG() {
     const routeData = window._biketerraRouteData;
     if (!routeData) {
-      console.log('[Gradient Colors] No route data available yet');
+      log('No route data available yet');
       return;
     }
 
     const svg = document.querySelector('svg.pathSVG');
     if (!svg) {
-      console.log('[Gradient Colors] SVG not found yet');
+      log('SVG not found yet');
       return;
     }
 
@@ -393,19 +409,19 @@
       return;
     }
 
-    console.log('[Gradient Colors] Processing SVG with route data...');
+    log('Processing SVG with route data...');
 
     // Find ALL stroke polylines - we only want the LAST one (the active one)
     const strokePolylines = svg.querySelectorAll('polyline[stroke="var(--white-4)"]');
     if (strokePolylines.length === 0) {
-      console.log('[Gradient Colors] No stroke polylines found');
+      log('No stroke polylines found');
       return;
     }
 
     // Only process the last (most recent/active) stroke polyline
     const strokePolyline = strokePolylines[strokePolylines.length - 1];
-    console.log(
-      '[Gradient Colors] Processing active polyline (last of',
+    log(
+      'Processing active polyline (last of',
       strokePolylines.length,
       ')'
     );
@@ -414,7 +430,7 @@
     const points = parsePolylinePoints(pointsStr);
 
     if (points.length < 2) {
-      console.log('[Gradient Colors] Not enough points in polyline');
+      log('Not enough points in polyline');
       return;
     }
 
@@ -427,7 +443,7 @@
     const yMax = Math.max(...points.map(p => p.y));
     const ySpan = yMax - yMin || 1;
 
-    console.log('[Gradient Colors] Y span:', ySpan, 'elevRange:', elevRange);
+    log('Y span:', ySpan, 'elevRange:', elevRange);
 
     // Remove any existing polygons we created
     svg.querySelectorAll('polygon').forEach(p => p.remove());
@@ -458,9 +474,9 @@
     if (useRouteData) {
       const direction = detectRouteDirection(elevationPoints, routePoints, totalDistance);
       isReversed = direction === 'reverse';
-      console.log('[Gradient Colors] Using route data for accurate gradients (' + direction + ')');
+      log('Using route data for accurate gradients (' + direction + ')');
     } else {
-      console.log('[Gradient Colors] Falling back to SVG-based gradient estimation');
+      log('Falling back to SVG-based gradient estimation');
     }
 
     for (let i = 0; i < elevationPoints.length - 1; i++) {
@@ -526,7 +542,7 @@
 
     // Mark as processed
     svg.dataset.gradientColored = 'true';
-    console.log('[Gradient Colors] SVG processing complete');
+    log('SVG processing complete');
   }
 
   // Parse polyline points string into array of {x, y}
@@ -599,7 +615,7 @@
       svgContentObserver.disconnect();
     }
 
-    console.log('[Gradient Colors] Setting up SVG content observer for direction changes');
+    log('Setting up SVG content observer for direction changes');
     observedSvg = svg;
 
     svgContentObserver = new MutationObserver(function (mutations) {
@@ -613,7 +629,7 @@
       // Debounce to avoid multiple rapid reprocesses
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(function () {
-        console.log('[Gradient Colors] SVG polylines changed, reprocessing...');
+        log('SVG polylines changed, reprocessing...');
 
         // Clear processed state and remove old polygons
         svg.dataset.gradientColored = 'false';
@@ -667,7 +683,7 @@
       gradientCircleObserver.disconnect();
     }
 
-    console.log('[Gradient Colors] Setting up gradient circle observer on GRADE indicator');
+    log('Setting up gradient circle observer on GRADE indicator');
     observedCircle = circle;
 
     // Create observer to watch for style and content changes
