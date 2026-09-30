@@ -55,3 +55,4 @@ Change Log
 3.2.1 — Updated selectors to match Biketerra's new elevation chart markup.
 3.2.2 — Updated to Biketerra's new route data serialization format.
 3.2.3 — Fixed the recoloring never starting when the route menu is closed; the route ID now comes from the page's own route data request.
+3.2.4 — Quieter console output: lines are timestamped like Biketerra's own and reduced to a route summary, the detected chart direction, and errors.
