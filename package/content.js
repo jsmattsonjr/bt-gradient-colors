@@ -55,7 +55,8 @@
     if (param && /^\d+$/.test(param)) {
       return param;
     }
-    const path = window.location.pathname.match(/\/(?:ride|spectate)\/(\d+)/);
+    // not /spectate/<id>: that is an event ID, not a route ID (see spectateEventId)
+    const path = window.location.pathname.match(/\/ride\/(\d+)/);
     if (path) {
       return path[1];
     }
@@ -69,10 +70,21 @@
     return null;
   }
 
+  // A spectate page is keyed on the event, and loads its route_processed from
+  // /spectate/<event>/__data.json rather than /ride/__data.json?route=..., so
+  // there is no route ID to sniff; fetch the event's own payload instead.
+  function spectateEventId() {
+    const match = window.location.pathname.match(/^\/spectate\/(\d+)/);
+    return match ? match[1] : null;
+  }
+
   // Fetch route data from Biketerra API
   async function fetchRouteData(routeId) {
     try {
-      const url = `https://biketerra.com/ride/__data.json?route=${routeId}`;
+      const eventId = spectateEventId();
+      const url = eventId
+        ? `https://biketerra.com/spectate/${eventId}/__data.json`
+        : `https://biketerra.com/ride/__data.json?route=${routeId}`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -118,7 +130,9 @@
           if (routePoints.length > 0) {
             const totalDistance = routePoints[routePoints.length - 1].distance;
             const elevations = routePoints.map(p => p.elevation);
+            const route = refs.route != null ? d[refs.route] : null;
             return {
+              id: route ? deref(route.id) : null,
               totalDistance,
               minElev: Math.min(...elevations),
               maxElev: Math.max(...elevations),
@@ -140,7 +154,8 @@
   let initializeInProgress = false;
 
   async function initialize() {
-    const routeId = findRouteId();
+    const eventId = spectateEventId();
+    const routeId = eventId ? 'event ' + eventId : findRouteId();
     if (!routeId) {
       return false;
     }
@@ -162,7 +177,7 @@
 
     if (routeData) {
       log(
-        'Route ' + routeId + ', ' + routeData.routePoints.length + ' points, ' +
+        'Route ' + (routeData.id || routeId) + ', ' + routeData.routePoints.length + ' points, ' +
           (routeData.totalDistance / 1000).toFixed(2) + ' km, elevation ' +
           Math.round(routeData.minElev) + '–' + Math.round(routeData.maxElev) + ' m'
       );
